@@ -22,3 +22,16 @@ PYTHONPATH=. python3 -m unittest discover -s tests -v     # 20 assertions
 No dependencies, Python 3.11. Every number in `FINDINGS.md` is printed by an
 experiment and asserted by a test. Nothing in this repo models anything
 outside itself.
+
+## Interactive bench
+
+`artifact/lab.html` is the public gateway into the same mechanics: five benches,
+one per rung, each computing its result in the browser rather than reporting it.
+Its arithmetic is a direct transcription of `substrates/` and reproduces every
+figure in `FINDINGS.md` — EXP2 `0 / 17 / 17 / 0`, EXP3 `0 / 8` and
+`{0:0, 1:2, 2:2, 3:0}`, EXP4 `0 / 3` violations and influence
+`[0,0] / [3,0] / [3,1]`.
+
+Substrate seeds come from live commits on this repository, read through the
+viewer's GitHub connector; where no connector is available the bench falls back
+to the experiments' own seed values and says so.

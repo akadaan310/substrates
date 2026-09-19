@@ -1,0 +1,1025 @@
+<title>Substrate Bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#E9EAEE; --surface:#F5F6F8; --sunk:#DFE1E7;
+  --ink:#171A21; --ink-soft:#575D6B; --ink-faint:#858B99;
+  --rule:#C7CAD3; --rule-soft:#D8DAE1;
+  --signal:#2B3FD9; --signal-soft:#DDE1FA;
+  --change:#9C6512; --change-soft:#F4E6CB;
+  --violation:#A8324F; --violation-soft:#F6DAE1; --on-signal:#FFFFFF;
+  --display:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --body:'IBM Plex Sans',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F1116; --surface:#171A21; --sunk:#0B0D12;
+    --ink:#E8EAF0; --ink-soft:#959CAD; --ink-faint:#6C7385;
+    --rule:#2A2F3B; --rule-soft:#21252F;
+    --signal:#8895FF; --signal-soft:#1D2240;
+    --change:#E0A94A; --change-soft:#33260F;
+    --violation:#E8748F; --violation-soft:#38151F; --on-signal:#10131C;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F1116; --surface:#171A21; --sunk:#0B0D12;
+  --ink:#E8EAF0; --ink-soft:#959CAD; --ink-faint:#6C7385;
+  --rule:#2A2F3B; --rule-soft:#21252F;
+  --signal:#8895FF; --signal-soft:#1D2240;
+  --change:#E0A94A; --change-soft:#33260F;
+  --violation:#E8748F; --violation-soft:#38151F; --on-signal:#10131C;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:var(--body); font-size:15px; line-height:1.55;
+  margin:0; padding-inline:16px; padding-block:0;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:880px;margin:0 auto;padding-block:32px 64px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
+a{color:var(--signal)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ---------- masthead ---------- */
+.mast{border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:8px}
+.eyebrow{
+  font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-faint);margin-bottom:12px;
+}
+h1{font-size:clamp(30px,6.5vw,46px);font-weight:700;letter-spacing:-.022em;line-height:1.02}
+.thesis{
+  font-size:16px;color:var(--ink-soft);margin-top:14px;max-width:60ch;
+}
+.thesis b{color:var(--ink);font-weight:500}
+
+/* ---------- live feed strip ---------- */
+.feed{
+  display:flex;flex-wrap:wrap;gap:10px 18px;align-items:baseline;
+  font-family:var(--mono);font-size:12px;
+  border:1px solid var(--rule);border-left:3px solid var(--signal);
+  background:var(--surface);padding:11px 14px;margin:22px 0 0;
+}
+.feed-dot{
+  width:7px;height:7px;border-radius:50%;background:var(--ink-faint);
+  display:inline-block;margin-right:7px;vertical-align:1px;flex:none;
+}
+.feed-dot.live{background:var(--signal)}
+.feed-dot.warn{background:var(--change)}
+.feed-dot.err{background:var(--violation)}
+.feed-label{color:var(--ink);font-weight:600}
+.feed-detail{color:var(--ink-soft)}
+.feed-fix{color:var(--ink-soft);flex-basis:100%;line-height:1.5}
+.feed-fix a{text-decoration:underline}
+.shas{display:flex;flex-wrap:wrap;gap:6px;flex-basis:100%}
+.sha{
+  font-family:var(--mono);font-size:11px;padding:2px 6px;
+  background:var(--sunk);border:1px solid var(--rule-soft);color:var(--ink-soft);
+  white-space:nowrap;
+}
+.sha b{color:var(--signal);font-weight:600}
+
+/* ---------- bench ---------- */
+.bench{
+  display:grid;grid-template-columns:46px 1fr;gap:0 18px;
+  border-bottom:1px solid var(--rule);padding:34px 0;
+}
+.rail{
+  font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.06em;
+  color:var(--signal);border-top:2px solid var(--signal);padding-top:8px;
+}
+.rail span{display:block;color:var(--ink-faint);font-weight:400;margin-top:3px;letter-spacing:0}
+.bench-head h2{font-size:22px;font-weight:600;letter-spacing:-.012em}
+.ask{color:var(--ink-soft);font-size:14.5px;margin:7px 0 0;max-width:58ch}
+
+/* ---------- controls ---------- */
+.controls{
+  display:flex;flex-wrap:wrap;gap:14px 20px;align-items:center;
+  margin-top:20px;padding:13px 15px;background:var(--surface);border:1px solid var(--rule);
+}
+.ctl{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:12px}
+.ctl label{color:var(--ink-soft);white-space:nowrap}
+input[type=range]{
+  width:132px;accent-color:var(--signal);background:transparent;
+}
+.val{
+  font-family:var(--mono);font-weight:600;color:var(--ink);
+  min-width:2.2em;text-align:right;font-variant-numeric:tabular-nums;
+}
+.seg{display:inline-flex;border:1px solid var(--rule);background:var(--paper)}
+.seg button{
+  font-family:var(--mono);font-size:11.5px;padding:5px 11px;border:0;cursor:pointer;
+  background:transparent;color:var(--ink-soft);
+}
+.seg button+button{border-left:1px solid var(--rule)}
+.seg button[aria-pressed="true"]{background:var(--signal);color:var(--on-signal)}
+button.act{
+  font-family:var(--mono);font-size:11.5px;padding:6px 13px;cursor:pointer;
+  background:var(--ink);color:var(--paper);border:1px solid var(--ink);
+}
+button.act.ghost{background:transparent;color:var(--ink);border-color:var(--rule)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+/* ---------- cells ---------- */
+.cells{display:flex;flex-wrap:wrap;gap:12px;margin-top:18px}
+.cell{
+  border:1.5px solid var(--ink);background:var(--surface);
+  padding:11px 14px;min-width:96px;
+}
+.cell.ghosted{border-style:dashed;border-color:var(--rule);color:var(--ink-faint)}
+.cell.flag{border-color:var(--change);background:var(--change-soft)}
+.cell.bad{border-color:var(--violation);background:var(--violation-soft)}
+.cell-id{font-family:var(--mono);font-size:11px;color:var(--ink-soft);letter-spacing:.05em}
+.cell-state{font-family:var(--mono);font-size:27px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.cell-note{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);margin-top:2px}
+
+/* ---------- computation readout ---------- */
+.calc{
+  font-family:var(--mono);font-size:12.5px;line-height:1.85;
+  background:var(--sunk);border:1px solid var(--rule-soft);
+  padding:12px 14px;margin-top:16px;overflow-x:auto;
+}
+.calc div{white-space:pre}
+.calc .c{color:var(--change);font-weight:600}
+.calc .s{color:var(--signal);font-weight:600}
+.calc .v{color:var(--violation);font-weight:600}
+.calc .dim{color:var(--ink-faint)}
+
+/* ---------- verdict ---------- */
+.verdict{
+  margin-top:16px;padding-left:13px;border-left:3px solid var(--signal);
+  font-size:14.5px;color:var(--ink);max-width:62ch;
+}
+.verdict.change{border-left-color:var(--change)}
+.verdict.bad{border-left-color:var(--violation)}
+.verdict b{font-weight:600}
+.verdict .num{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums}
+
+/* ---------- tally ---------- */
+.tally{display:flex;flex-wrap:wrap;gap:0;margin-top:16px;border:1px solid var(--rule)}
+.tally div{
+  flex:1 1 118px;padding:9px 12px;border-right:1px solid var(--rule);background:var(--surface);
+}
+.tally div:last-child{border-right:0}
+.tally dt{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);letter-spacing:.05em;text-transform:uppercase}
+.tally dd{margin:2px 0 0;font-family:var(--mono);font-size:21px;font-weight:600;font-variant-numeric:tabular-nums}
+.tally dd.zero{color:var(--ink-faint)}
+.tally dd.hot{color:var(--change)}
+.tally dd.bad{color:var(--violation)}
+
+/* ---------- ring ---------- */
+.ringwrap{margin-top:18px;display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+svg.ring{display:block;width:min(100%,290px);height:auto;flex:none}
+.legend{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);line-height:1.9;flex:1 1 200px}
+.legend i{display:inline-block;width:18px;height:2px;vertical-align:3px;margin-right:7px}
+
+/* ---------- universes ---------- */
+.unis{display:flex;gap:14px;flex-wrap:wrap;margin-top:18px;align-items:stretch}
+.uni{
+  flex:1 1 210px;border:1px solid var(--rule);background:var(--surface);padding:13px 14px;
+}
+.uni h3{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.05em;color:var(--signal)}
+.uni .bound{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-bottom:10px}
+.uni .cells{margin-top:0}
+.uni .cell{min-width:72px;padding:8px 10px}
+.uni .cell-state{font-size:21px}
+
+.foot{
+  margin-top:40px;padding-top:22px;border-top:1px solid var(--rule);
+  font-size:13.5px;color:var(--ink-soft);max-width:64ch;
+}
+.foot code{font-family:var(--mono);font-size:12.5px;background:var(--sunk);padding:1px 5px}
+
+@media (max-width:560px){
+  .bench{grid-template-columns:1fr;gap:12px}
+  .rail{border-top:0;border-left:2px solid var(--signal);padding:0 0 0 9px}
+  .rail span{display:inline;margin-left:8px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <div class="eyebrow">Substrates · interactive bench</div>
+    <h1>Where the smallest primitive is</h1>
+    <p class="thesis">Five benches, each one a rung. Every rung exists because the rung below it
+      <b>measurably could not do the thing</b>. Drag the controls; the arithmetic is printed as it runs.</p>
+    <div class="feed" id="feed">
+      <span><span class="feed-dot" id="feed-dot"></span><span class="feed-label" id="feed-label">Connecting…</span></span>
+      <span class="feed-detail" id="feed-detail">looking for a live seed</span>
+      <span class="feed-fix" id="feed-fix" hidden></span>
+      <div class="shas" id="shas"></div>
+    </div>
+  </header>
+
+  <!-- S0 -->
+  <section class="bench">
+    <div class="rail">S0<span>substrate</span></div>
+    <div>
+      <div class="bench-head">
+        <h2>Two substrates, one value</h2>
+        <p class="ask">Is a value enough to make two things two? Set both cells to the same state and
+          count the population under each rule.</p>
+      </div>
+      <div class="controls">
+        <div class="ctl"><label for="s0a">a.state</label><input type="range" id="s0a" min="0" max="11" value="3"><span class="val" id="s0a-v">3</span></div>
+        <div class="ctl"><label for="s0b">b.state</label><input type="range" id="s0b" min="0" max="11" value="7"><span class="val" id="s0b-v">7</span></div>
+        <button class="act ghost" id="s0-match">Set equal</button>
+      </div>
+      <div class="cells" id="s0-cells"></div>
+      <div class="calc" id="s0-calc"></div>
+      <div class="tally" id="s0-tally"></div>
+      <div class="verdict" id="s0-verdict"></div>
+    </div>
+  </section>
+
+  <!-- S1 -->
+  <section class="bench">
+    <div class="rail">S1<span>coupling</span></div>
+    <div>
+      <div class="bench-head">
+        <h2>Interact without merging</h2>
+        <p class="ask">A coupling reads the source's state and writes the destination's. It never touches
+          a label. Compare it to a merge, which returns one substrate instead of two.</p>
+      </div>
+      <div class="controls">
+        <div class="ctl"><label for="s1a">a.state</label><input type="range" id="s1a" min="0" max="11" value="2"><span class="val" id="s1a-v">2</span></div>
+        <div class="ctl"><label for="s1b">b.state</label><input type="range" id="s1b" min="0" max="11" value="5"><span class="val" id="s1b-v">5</span></div>
+        <button class="act" id="s1-couple">Apply a→b</button>
+        <button class="act ghost" id="s1-merge">Merge a,b</button>
+        <button class="act ghost" id="s1-reset">Reset</button>
+      </div>
+      <div class="cells" id="s1-cells"></div>
+      <div class="calc" id="s1-calc"></div>
+      <div class="tally" id="s1-tally"></div>
+      <div class="verdict" id="s1-verdict"></div>
+    </div>
+  </section>
+
+  <!-- S2 -->
+  <section class="bench">
+    <div class="rail">S2<span>topology</span></div>
+    <div>
+      <div class="bench-head">
+        <h2>Perturb one, watch the relations</h2>
+        <p class="ask">Four substrates on a ring of 12. Adjacent means within radius 2 of each other.
+          Both modes start from the same edge set — then <code>a</code> moves.</p>
+      </div>
+      <div class="controls">
+        <div class="ctl"><label>adjacency</label>
+          <span class="seg" id="s2-mode">
+            <button data-mode="stored" aria-pressed="false">stored</button>
+            <button data-mode="derived" aria-pressed="true">derived from state</button>
+          </span>
+        </div>
+        <div class="ctl"><label for="s2a">a.state</label><input type="range" id="s2a" min="0" max="11" value="0"><span class="val" id="s2a-v">0</span></div>
+        <button class="act ghost" id="s2-sweep">Sweep all 12</button>
+      </div>
+      <div class="ringwrap">
+        <svg class="ring" id="s2-ring" viewBox="0 0 300 300" role="img" aria-label="Ring diagram of four substrates positioned by state"></svg>
+        <div class="legend" id="s2-legend"></div>
+      </div>
+      <div class="calc" id="s2-calc"></div>
+      <div class="tally" id="s2-tally"></div>
+      <div class="verdict" id="s2-verdict"></div>
+    </div>
+  </section>
+
+  <!-- S3 -->
+  <section class="bench">
+    <div class="rail">S3<span>mediation</span></div>
+    <div>
+      <div class="bench-head">
+        <h2>Reaching a relation you are not part of</h2>
+        <p class="ask">A pairwise gate can only move edges it is an endpoint of. Two ways past that limit:
+          let the gate read a configuration-wide term, or let the coupling carry the change through time.</p>
+      </div>
+      <div class="controls">
+        <div class="ctl"><label>gate</label>
+          <span class="seg" id="s3-mode">
+            <button data-mode="pairwise" aria-pressed="true">pairwise</button>
+            <button data-mode="mediated" aria-pressed="false">mediated</button>
+            <button data-mode="time" aria-pressed="false">pairwise + time</button>
+          </span>
+        </div>
+        <div class="ctl"><label for="s3a">a.state</label><input type="range" id="s3a" min="0" max="11" value="6"><span class="val" id="s3a-v">6</span></div>
+        <div class="ctl" id="s3-steps-ctl" hidden><label for="s3s">steps</label><input type="range" id="s3s" min="0" max="3" value="1"><span class="val" id="s3s-v">1</span></div>
+      </div>
+      <div class="calc" id="s3-calc"></div>
+      <div class="tally" id="s3-tally"></div>
+      <div class="verdict" id="s3-verdict"></div>
+    </div>
+  </section>
+
+  <!-- S4 -->
+  <section class="bench">
+    <div class="rail">S4<span>universes</span></div>
+    <div>
+      <div class="bench-head">
+        <h2>Two bounded state spaces</h2>
+        <p class="ask">U1 lives in <span class="mono">range(5)</span>, U2 in <span class="mono">range(7)</span>.
+          Collapse re-bounds everything to one modulus. Conjoin keeps both and relates them through a
+          boundary link that translates between the spaces.</p>
+      </div>
+      <div class="controls">
+        <div class="ctl"><label>relation</label>
+          <span class="seg" id="s4-mode">
+            <button data-mode="conjoin" aria-pressed="true">conjoin</button>
+            <button data-mode="collapse" aria-pressed="false">collapse</button>
+          </span>
+        </div>
+        <div class="ctl"><label>interfaces</label>
+          <span class="seg" id="s4-if">
+            <button data-if="0" aria-pressed="false">none</button>
+            <button data-if="1" aria-pressed="true">a2→b0</button>
+            <button data-if="2" aria-pressed="false">both</button>
+          </span>
+        </div>
+        <div class="ctl"><label for="s4s">steps</label><input type="range" id="s4s" min="0" max="6" value="6"><span class="val" id="s4s-v">6</span></div>
+      </div>
+      <div class="unis" id="s4-unis"></div>
+      <div class="calc" id="s4-calc"></div>
+      <div class="tally" id="s4-tally"></div>
+      <div class="verdict" id="s4-verdict"></div>
+    </div>
+  </section>
+
+  <p class="foot">
+    Every number on this page is computed in the browser by the same arithmetic as
+    <code>substrates/</code> in the repository, where 20 tests assert it.
+    The seed values come from live commits when a GitHub connector is available, and fall back to the
+    repository's own experiment seeds otherwise — the strip at the top says which is in use.
+    <a href="https://github.com/akadaan310/substrates" target="_blank" rel="noopener">akadaan310/substrates</a>
+  </p>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   substrate arithmetic — mirrors substrates/*.py exactly
+   ============================================================ */
+var M = 12, RADIUS = 2, WIDE = 3, NARROW = 1, THRESHOLD = 20;
+
+function mod(n, m){ return ((n % m) + m) % m; }
+function ringDist(a, b, m){ var d = Math.abs(a - b) % m; return Math.min(d, m - d); }
+function key(a, b){ return [a, b].sort().join(""); }
+
+function gatedEdges(st, radius){
+  var ids = Object.keys(st).sort(), out = [];
+  for (var i = 0; i < ids.length; i++)
+    for (var j = i + 1; j < ids.length; j++)
+      if (ringDist(st[ids[i]], st[ids[j]], M) <= radius) out.push(key(ids[i], ids[j]));
+  return out;
+}
+function mediatedEdges(st){
+  var load = 0, ids = Object.keys(st).sort(), out = [], k;
+  for (k in st) load += st[k];
+  var radius = load < THRESHOLD ? WIDE : NARROW;
+  for (var i = 0; i < ids.length; i++)
+    for (var j = i + 1; j < ids.length; j++)
+      if (ringDist(st[ids[i]], st[ids[j]], M) <= radius) out.push(key(ids[i], ids[j]));
+  return { edges: out, load: load, radius: radius };
+}
+function symDiff(a, b){
+  var sa = new Set(a), sb = new Set(b), out = [];
+  a.forEach(function(e){ if (!sb.has(e)) out.push(e); });
+  b.forEach(function(e){ if (!sa.has(e)) out.push(e); });
+  return out;
+}
+function splitDelta(delta, id){
+  var inc = [], non = [];
+  delta.forEach(function(e){ (e.indexOf(id) >= 0 ? inc : non).push(e); });
+  return { incident: inc, nonIncident: non };
+}
+/* synchronous step: every coupling reads the PREVIOUS config,
+   folding into each destination in sorted (dst, src) order */
+function step(st, links, modOf){
+  var pending = Object.assign({}, st);
+  links.slice().sort(function(x, y){
+    return x.dst === y.dst ? (x.src < y.src ? -1 : 1) : (x.dst < y.dst ? -1 : 1);
+  }).forEach(function(c){ pending[c.dst] = c.fn(st[c.src], pending[c.dst]); });
+  var out = {};
+  for (var k in pending) out[k] = mod(pending[k], modOf(k));
+  return out;
+}
+function run(st, links, modOf, n){
+  for (var i = 0; i < n; i++) st = step(st, links, modOf);
+  return st;
+}
+
+/* ============================================================
+   seeds — live commits, or the repository's own experiment seeds
+   ============================================================ */
+var FALLBACK = {
+  ring:  { a: 0, b: 2, c: 5, d: 9 },
+  pairA: 3, pairB: 7,
+  couple:{ a: 2, b: 5 },
+  uni:   { a0: 1, a1: 0, a2: 3, b0: 2, b1: 6, b2: 4 }
+};
+var seeds = JSON.parse(JSON.stringify(FALLBACK));
+var provenance = [];   /* [{sid, sha, raw, m, val}] */
+
+/* first three hex digits of a sha, reduced into a bounded space */
+function fromSha(sha, m){
+  var raw = parseInt(sha.slice(0, 3), 16);
+  return { raw: raw, val: mod(raw, m) };
+}
+function applyCommits(commits){
+  provenance = [];
+  function take(i, sid, m){
+    var c = commits[i % commits.length];
+    if (!c || !c.sha) return null;
+    var r = fromSha(c.sha, m);
+    provenance.push({ sid: sid, sha: c.sha.slice(0, 7), raw: r.raw, m: m, val: r.val });
+    return r.val;
+  }
+  var ring = {}, ok = true;
+  ["a", "b", "c", "d"].forEach(function(sid, i){
+    var v = take(i, sid, M); if (v === null) ok = false; else ring[sid] = v;
+  });
+  if (!ok) return false;
+  seeds.ring = ring;
+  seeds.couple = { a: ring.a, b: ring.b };
+  seeds.pairA = ring.a; seeds.pairB = ring.b;
+  var uni = {};
+  [["a0",5],["a1",5],["a2",5],["b0",7],["b1",7],["b2",7]].forEach(function(p, i){
+    var v = take(i, p[0], p[1]); uni[p[0]] = v === null ? FALLBACK.uni[p[0]] : v;
+  });
+  seeds.uni = uni;
+  return true;
+}
+
+/* ============================================================
+   live seed — GitHub connector through the mcp capability
+   ============================================================ */
+var REPO = { owner: "akadaan310", repo: "substrates", sha: "claude/minimal-adaptive-topology-nzeu63", perPage: 8 };
+var SERVER = "GitHub", TOOL = "list_commits";
+
+function setFeed(cls, label, detail, fixHtml){
+  var dot = document.getElementById("feed-dot");
+  dot.className = "feed-dot" + (cls ? " " + cls : "");
+  document.getElementById("feed-label").textContent = label;
+  document.getElementById("feed-detail").textContent = detail;
+  var fix = document.getElementById("feed-fix");
+  if (fixHtml){ fix.innerHTML = fixHtml; fix.hidden = false; } else { fix.hidden = true; }
+}
+function renderShas(){
+  var host = document.getElementById("shas");
+  host.textContent = "";
+  provenance.slice(0, 4).forEach(function(p){
+    var el = document.createElement("span");
+    el.className = "sha";
+    el.innerHTML = p.sha + " → 0x" + p.sha.slice(0, 3) + " = " + p.raw +
+                   " mod " + p.m + " = <b>" + p.val + "</b> → " + p.sid;
+    host.appendChild(el);
+  });
+}
+function offline(reason, fixHtml, cls){
+  seeds = JSON.parse(JSON.stringify(FALLBACK));
+  provenance = [];
+  document.getElementById("shas").textContent = "";
+  setFeed(cls || "warn", "Repository seed", reason, fixHtml);
+  renderAll();
+}
+
+var retried = false;
+function liveSeed(){
+  if (!window.claude || !window.claude.use){
+    offline("no viewer runtime here — using the seeds from the repository's experiments", null, "");
+    return;
+  }
+  window.claude.use("mcp").then(function(mcp){
+    if (!mcp){
+      offline("no connector bridge in this view — using the seeds from the repository's experiments", null, "");
+      return;
+    }
+    setFeed("", "Connecting…", "asking the GitHub connector for recent commits");
+
+    function onEvent(ev){
+      if (ev.type === "data"){
+        var payload = ev.result && ev.result.payload;
+        var commits = Array.isArray(payload) ? payload
+                    : (payload && Array.isArray(payload.commits) ? payload.commits : null);
+        if (!commits || !commits.length){
+          offline("the connector answered with no commits — using the repository's experiment seeds");
+          return;
+        }
+        if (!applyCommits(commits)){
+          offline("the commits carried no sha to read — using the repository's experiment seeds");
+          return;
+        }
+        var when = ev.result.cache ? new Date(ev.result.cache.storedAt) : new Date();
+        var latest = commits[0].commit && commits[0].commit.author && commits[0].commit.author.date;
+        setFeed("live", "Live seed · GitHub",
+          REPO.owner + "/" + REPO.repo + " · " + commits.length + " commits · read " +
+          when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
+          (latest ? " · newest " + new Date(latest).toLocaleDateString() : ""));
+        renderShas();
+        renderAll();
+        return;
+      }
+      /* ev.type === "error" — one branch per code, per the capability's failure design */
+      var code = ev.error && ev.error.code;
+      switch (code){
+        case "server_not_connected":
+          offline("GitHub is not connected for this viewer",
+            'Add <b>GitHub</b> in claude.ai → Settings → Connectors, then reload, to seed the benches from live commits.');
+          break;
+        case "needs_reauth":
+          offline("the GitHub connection has lapsed",
+            'Reconnect <b>GitHub</b> in claude.ai → Settings → Connectors, then reload.');
+          break;
+        case "selection_required":
+          offline("more than one GitHub connector is available and none is chosen",
+            'Choose which <b>GitHub</b> connector this page should use when claude.ai asks, then reload.');
+          break;
+        case "not_in_manifest":
+        case "blocked_by_policy":
+        case "approval_required":
+          offline("this view is not allowed to call GitHub — using the repository's experiment seeds");
+          break;
+        case "tool_error":
+          offline("GitHub answered with an error: " + (ev.error.message || "unreported"));
+          break;
+        case "server_unavailable":
+        case "rate_limited":
+        case "upstream_error":
+          if (!retried && ev.error && ev.error.retryable){
+            retried = true;
+            setFeed("warn", "Retrying…", "GitHub did not answer; trying once more");
+            setTimeout(function(){ mcp.invalidate(SERVER, TOOL).catch(function(){}); },
+                       Math.min(ev.error.retryAfterMs || 2500, 60000) + Math.random() * 800);
+          } else {
+            offline("GitHub did not answer — using the repository's experiment seeds");
+          }
+          break;
+        default:
+          offline("live seed unavailable — using the repository's experiment seeds");
+      }
+    }
+
+    try {
+      mcp.watchTool(SERVER, TOOL, REPO, onEvent, { refetchInterval: 120000, cache: { staleTime: 60000 } });
+    } catch (e){
+      offline("live seed unavailable — using the repository's experiment seeds");
+    }
+  }).catch(function(){
+    offline("live seed unavailable — using the repository's experiment seeds");
+  });
+}
+
+/* ============================================================
+   rendering helpers
+   ============================================================ */
+function el(tag, cls, html){
+  var n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (html !== undefined) n.innerHTML = html;
+  return n;
+}
+function cell(host, id, state, note, cls){
+  var c = el("div", "cell" + (cls ? " " + cls : ""));
+  c.appendChild(el("div", "cell-id", id));
+  c.appendChild(el("div", "cell-state", String(state)));
+  if (note) c.appendChild(el("div", "cell-note", note));
+  host.appendChild(c);
+}
+function tally(host, items){
+  host.textContent = "";
+  items.forEach(function(it){
+    var d = el("div");
+    d.appendChild(el("dt", null, it.label));
+    d.appendChild(el("dd", it.cls || (it.value === 0 || it.value === "0" ? "zero" : null), String(it.value)));
+    host.appendChild(d);
+  });
+}
+function calc(host, lines){
+  host.textContent = "";
+  lines.forEach(function(l){ host.appendChild(el("div", null, l)); });
+}
+function verdict(host, cls, html){
+  host.className = "verdict" + (cls ? " " + cls : "");
+  host.innerHTML = html;
+}
+function seedNote(sid){
+  var p = provenance.filter(function(x){ return x.sid === sid; })[0];
+  return p ? "← " + p.sha : "";
+}
+
+/* ============================================================
+   S0 — identity
+   ============================================================ */
+var s0 = { a: 3, b: 7 };
+function renderS0(){
+  document.getElementById("s0a-v").textContent = s0.a;
+  document.getElementById("s0b-v").textContent = s0.b;
+  var host = document.getElementById("s0-cells");
+  host.textContent = "";
+  var same = s0.a === s0.b;
+  cell(host, "a", s0.a, seedNote("a"), same ? "flag" : null);
+  cell(host, "b", s0.b, seedNote("b"), same ? "flag" : null);
+
+  var byState = new Set([s0.a, s0.b]).size, byLabel = 2;
+  calc(document.getElementById("s0-calc"), [
+    'population by state  = |{' + s0.a + ', ' + s0.b + '}| = <span class="' + (byState === 1 ? "v" : "dim") + '">' + byState + '</span>',
+    'population by label  = |{a, b}| = <span class="s">' + byLabel + '</span>'
+  ]);
+  tally(document.getElementById("s0-tally"), [
+    { label: "by state", value: byState, cls: byState === 1 ? "bad" : null },
+    { label: "by label", value: byLabel, cls: "hot" },
+    { label: "states equal", value: same ? "yes" : "no", cls: same ? "bad" : "zero" }
+  ]);
+  verdict(document.getElementById("s0-verdict"), same ? "bad" : null,
+    same
+      ? 'Both substrates hold <span class="num">' + s0.a + '</span>. Distinguished by state alone, one of them is <b>gone</b> — population <span class="num">1</span>. The label is the only thing here that resists collapse, and that makes it the smallest primitive the rest of the ladder is built on.'
+      : 'With different states, both rules agree on <span class="num">2</span>. Set them equal to see the rules disagree — that disagreement is the whole argument for the label.');
+}
+
+/* ============================================================
+   S1 — coupling
+   ============================================================ */
+var s1 = { a: 2, b: 5, applied: null, merged: false };
+function renderS1(){
+  document.getElementById("s1a-v").textContent = s1.a;
+  document.getElementById("s1b-v").textContent = s1.b;
+  var host = document.getElementById("s1-cells");
+  host.textContent = "";
+  var next = mod(s1.b + s1.a, M);
+
+  if (s1.merged){
+    cell(host, "a+b", mod(s1.a + s1.b, M), "one substrate", "bad");
+  } else {
+    cell(host, "a", s1.a, seedNote("a"));
+    cell(host, "b", s1.applied === null ? s1.b : s1.applied,
+         s1.applied === null ? "→ would be " + next : "written", s1.applied === null ? null : "flag");
+  }
+
+  var reach = new Set();
+  for (var i = 0; i < M; i++) reach.add(mod(s1.b + i, M));
+
+  calc(document.getElementById("s1-calc"), s1.merged ? [
+    'merge(a, b)  = Substrate("<span class="v">a+b</span>", (' + s1.a + ' + ' + s1.b + ') mod 12 = ' + mod(s1.a + s1.b, M) + ')',
+    '<span class="dim">population 2 → </span><span class="v">1</span><span class="dim">   labels a, b destroyed</span>'
+  ] : [
+    "b' = (b + a) mod 12 = (" + s1.b + ' + ' + s1.a + ') mod 12 = <span class="c">' + next + '</span>',
+    'a  = <span class="s">' + s1.a + '</span> <span class="dim">unchanged — the read is directed</span>',
+    '<span class="dim">sweeping a over 0…11 reaches ' + reach.size + ' distinct states of b</span>'
+  ]);
+  tally(document.getElementById("s1-tally"), [
+    { label: "population", value: s1.merged ? 1 : 2, cls: s1.merged ? "bad" : "hot" },
+    { label: "labels kept", value: s1.merged ? 0 : 2, cls: s1.merged ? "bad" : null },
+    { label: "b states reachable", value: reach.size + "/12", cls: "hot" }
+  ]);
+  verdict(document.getElementById("s1-verdict"), s1.merged ? "bad" : null,
+    s1.merged
+      ? 'Merge is the contrast case: two in, <b>one out</b>, and both labels destroyed. Whatever else it is, it is not interaction — there is nothing left to interact.'
+      : 'The coupling moves state and nothing else. Population stays <span class="num">2</span>, both labels survive, the source is untouched — and sweeping <span class="num">a</span> across its whole space reaches <span class="num">' + reach.size + '</span> distinct states of <span class="num">b</span>, so state genuinely crossed.');
+}
+
+/* ============================================================
+   S2 — topology
+   ============================================================ */
+var s2 = { mode: "derived", a: 0, stored: null };
+function s2base(){ return Object.assign({}, seeds.ring); }
+function s2cur(){ var st = s2base(); st.a = s2.a; return st; }
+function ensureStored(){ if (!s2.stored) s2.stored = gatedEdges(s2base(), RADIUS); }
+
+function drawRing(st, edges, changed){
+  var svg = document.getElementById("s2-ring"), C = 150, R = 106, NS = "http://www.w3.org/2000/svg";
+  svg.textContent = "";
+  function at(v){ var t = (v / M) * Math.PI * 2 - Math.PI / 2; return [C + R * Math.cos(t), C + R * Math.sin(t)]; }
+  var style = getComputedStyle(document.body);
+  var cRule = style.getPropertyValue("--rule").trim(),
+      cInk = style.getPropertyValue("--ink").trim(),
+      cSig = style.getPropertyValue("--signal").trim(),
+      cChg = style.getPropertyValue("--change").trim(),
+      cSurf = style.getPropertyValue("--surface").trim(),
+      cFaint = style.getPropertyValue("--ink-faint").trim();
+
+  var ring = document.createElementNS(NS, "circle");
+  ring.setAttribute("cx", C); ring.setAttribute("cy", C); ring.setAttribute("r", R);
+  ring.setAttribute("fill", "none"); ring.setAttribute("stroke", cRule); ring.setAttribute("stroke-width", "1");
+  svg.appendChild(ring);
+
+  for (var t = 0; t < M; t++){
+    var p = at(t), q = [C + (R - 6) * (p[0] - C) / R, C + (R - 6) * (p[1] - C) / R];
+    var tick = document.createElementNS(NS, "line");
+    tick.setAttribute("x1", p[0]); tick.setAttribute("y1", p[1]);
+    tick.setAttribute("x2", q[0]); tick.setAttribute("y2", q[1]);
+    tick.setAttribute("stroke", cRule); tick.setAttribute("stroke-width", "1");
+    svg.appendChild(tick);
+    var lab = document.createElementNS(NS, "text");
+    var lp = [C + (R + 21) * (p[0] - C) / R, C + (R + 21) * (p[1] - C) / R];
+    lab.setAttribute("x", lp[0]); lab.setAttribute("y", lp[1] + 3.5);
+    lab.setAttribute("text-anchor", "middle"); lab.setAttribute("fill", cFaint);
+    lab.setAttribute("font-family", "IBM Plex Mono, monospace"); lab.setAttribute("font-size", "9");
+    lab.textContent = t;
+    svg.appendChild(lab);
+  }
+  var chg = new Set(changed || []);
+  edges.forEach(function(e){
+    var ids = e.split(""), p = at(st[ids[0]]), q = at(st[ids[1]]);
+    var ln = document.createElementNS(NS, "line");
+    ln.setAttribute("x1", p[0]); ln.setAttribute("y1", p[1]);
+    ln.setAttribute("x2", q[0]); ln.setAttribute("y2", q[1]);
+    ln.setAttribute("stroke", chg.has(e) ? cChg : cSig);
+    ln.setAttribute("stroke-width", chg.has(e) ? "2.5" : "1.6");
+    svg.appendChild(ln);
+  });
+  Object.keys(st).sort().forEach(function(id){
+    var p = at(st[id]);
+    var c = document.createElementNS(NS, "circle");
+    c.setAttribute("cx", p[0]); c.setAttribute("cy", p[1]); c.setAttribute("r", "13");
+    c.setAttribute("fill", cSurf);
+    c.setAttribute("stroke", id === "a" ? cChg : cInk);
+    c.setAttribute("stroke-width", id === "a" ? "2.5" : "1.5");
+    svg.appendChild(c);
+    var t2 = document.createElementNS(NS, "text");
+    t2.setAttribute("x", p[0]); t2.setAttribute("y", p[1] + 4);
+    t2.setAttribute("text-anchor", "middle"); t2.setAttribute("fill", cInk);
+    t2.setAttribute("font-family", "IBM Plex Mono, monospace");
+    t2.setAttribute("font-size", "11"); t2.setAttribute("font-weight", "600");
+    t2.textContent = id;
+    svg.appendChild(t2);
+  });
+}
+
+function renderS2(){
+  ensureStored();
+  document.getElementById("s2a-v").textContent = s2.a;
+  var base = s2base(), cur = s2cur();
+  var before = s2.mode === "stored" ? s2.stored : gatedEdges(base, RADIUS);
+  var after  = s2.mode === "stored" ? s2.stored : gatedEdges(cur, RADIUS);
+  var delta = symDiff(before, after), split = splitDelta(delta, "a");
+
+  drawRing(cur, after, delta);
+
+  document.getElementById("s2-legend").innerHTML =
+    '<div><i style="background:var(--signal)"></i>adjacent — ring distance ≤ 2</div>' +
+    '<div><i style="background:var(--change)"></i>changed since a moved</div>' +
+    '<div style="margin-top:8px">node angle <b>is</b> its state; adjacency is angular proximity, so the relations are literally drawn by the values.</div>';
+
+  var lines = ["seed  " + Object.keys(cur).sort().map(function(k){ return k + "=" + cur[k]; }).join("  ")];
+  if (s2.mode === "stored"){
+    lines.push('edges = <span class="dim">stored at t0</span> = {' + s2.stored.join(", ") + '}');
+    lines.push('<span class="dim">state is never consulted → delta</span> = <span class="s">0</span>');
+  } else {
+    ["ab","ac","ad","bc","bd","cd"].forEach(function(e){
+      var ids = e.split(""), d = ringDist(cur[ids[0]], cur[ids[1]], M);
+      var on = d <= RADIUS, was = before.indexOf(e) >= 0;
+      lines.push("d(" + ids[0] + "," + ids[1] + ") = " + d +
+        (on ? ' ≤ 2  <span class="s">adjacent</span>' : '  <span class="dim">not adjacent</span>') +
+        (on !== was ? '   <span class="c">← changed</span>' : ""));
+    });
+  }
+  calc(document.getElementById("s2-calc"), lines);
+  tally(document.getElementById("s2-tally"), [
+    { label: "changed pairs", value: delta.length, cls: delta.length ? "hot" : null },
+    { label: "touching a", value: split.incident.length, cls: split.incident.length ? "hot" : null },
+    { label: "not touching a", value: split.nonIncident.length, cls: split.nonIncident.length ? "bad" : null }
+  ]);
+  var v2 = document.getElementById("s2-verdict");
+  if (s2.mode === "derived" && delta.length === 0){
+    verdict(v2, null, 'At this value the derived edge set happens to match the unperturbed one — <span class="num">0</span> relations differ. Keep dragging <span class="num">a</span>: the relations move as soon as a ring distance crosses the radius.');
+    return;
+  }
+  verdict(v2, s2.mode === "stored" ? null : "change",
+    s2.mode === "stored"
+      ? 'Stored edges do not answer to state. Drag <span class="num">a</span> anywhere across its 12 values and the relations change <b>zero</b> times — the question "can one substrate\'s state change another\'s neighbourhood?" is flatly no at this rung.'
+      : 'Derived adjacency answers immediately: <span class="num">' + delta.length + '</span> relations differ from the unperturbed configuration. But every one of them <b>touches a</b>. A pairwise gate cannot move a relation it is not an endpoint of — which is exactly the limit S3 is about.');
+}
+
+/* ============================================================
+   S3 — mediation vs propagation
+   ============================================================ */
+var s3 = { mode: "pairwise", a: 6, steps: 1 };
+function renderS3(){
+  document.getElementById("s3a-v").textContent = s3.a;
+  document.getElementById("s3s-v").textContent = s3.steps;
+  document.getElementById("s3-steps-ctl").hidden = s3.mode !== "time";
+
+  var base = Object.assign({}, seeds.ring), pert = Object.assign({}, base);
+  pert.a = s3.a;
+  var before, after, lines = [], delta;
+
+  if (s3.mode === "mediated"){
+    var mb = mediatedEdges(base), ma = mediatedEdges(pert);
+    before = mb.edges; after = ma.edges;
+    lines.push("load(base)      = " + mb.load + '  → radius <span class="s">' + mb.radius + "</span>");
+    lines.push("load(perturbed) = " + ma.load + '  → radius <span class="' + (ma.radius !== mb.radius ? "c" : "s") + '">' + ma.radius + "</span>" +
+      (ma.radius !== mb.radius ? '   <span class="c">← the gate itself moved</span>' : ""));
+  } else if (s3.mode === "time"){
+    var links = [
+      { src: "a", dst: "b", fn: function(s, d){ return d + s; } },
+      { src: "b", dst: "c", fn: function(s, d){ return d + s; } },
+      { src: "c", dst: "d", fn: function(s, d){ return d + s; } }
+    ], modOf = function(){ return M; };
+    var u = run(base, links, modOf, s3.steps), p = run(pert, links, modOf, s3.steps);
+    before = gatedEdges(u, WIDE); after = gatedEdges(p, WIDE);
+    lines.push("after " + s3.steps + " step" + (s3.steps === 1 ? " " : "s") + "  unperturbed  " +
+      Object.keys(u).sort().map(function(k){ return k + "=" + u[k]; }).join("  "));
+    lines.push("after " + s3.steps + " step" + (s3.steps === 1 ? " " : "s") + "  perturbed    " +
+      Object.keys(p).sort().map(function(k){ return k + "=" + p[k]; }).join("  "));
+  } else {
+    before = gatedEdges(base, WIDE); after = gatedEdges(pert, WIDE);
+    lines.push('gate reads only its two endpoints <span class="dim">— nothing else can enter the decision</span>');
+  }
+
+  delta = symDiff(before, after);
+  var split = splitDelta(delta, "a");
+  lines.push('changed pairs   = {' + (delta.length ? delta.join(", ") : "∅") + "}");
+  if (split.nonIncident.length)
+    lines.push('not touching a  = <span class="c">{' + split.nonIncident.join(", ") + "}</span>");
+
+  calc(document.getElementById("s3-calc"), lines);
+  tally(document.getElementById("s3-tally"), [
+    { label: "changed pairs", value: delta.length, cls: delta.length ? "hot" : null },
+    { label: "touching a", value: split.incident.length },
+    { label: "not touching a", value: split.nonIncident.length, cls: split.nonIncident.length ? "hot" : null }
+  ]);
+
+  var v = document.getElementById("s3-verdict");
+  if (s3.mode === "pairwise")
+    verdict(v, null, 'The pairwise gate reaches <span class="num">' + split.nonIncident.length + '</span> relations that do not touch <span class="num">a</span>, at any value of <span class="num">a</span>. This is the ceiling, not a tuning problem.');
+  else if (s3.mode === "mediated")
+    verdict(v, split.nonIncident.length ? "change" : null,
+      split.nonIncident.length
+        ? 'Letting the gate read a configuration-wide term reaches <span class="num">' + split.nonIncident.length + '</span> relation(s) <b>a is not part of</b>, in zero steps. That third term is the smallest addition that buys non-local relational change.'
+        : 'At this value the mediating term has not crossed its threshold yet, so the gate behaves pairwise. Drag <span class="num">a</span> higher until the load crosses it.');
+  else
+    verdict(v, split.nonIncident.length ? "change" : null,
+      'No new primitive here — just the S1 coupling carrying the perturbation forward, then re-deriving the same pairwise topology. Non-incident relations move from step 1, so the mediating term is <b>sufficient but not necessary</b>. Push to step 3 and the difference vanishes entirely: propagation is not monotone, which is precisely what the mediating term buys you protection from.');
+}
+
+/* ============================================================
+   S4 — universes
+   ============================================================ */
+var U1 = { uid: "U1", m: 5, members: ["a0", "a1", "a2"] };
+var U2 = { uid: "U2", m: 7, members: ["b0", "b1", "b2"] };
+var s4 = { mode: "conjoin", ifaces: 1, steps: 6 };
+var INTRA = [
+  { src: "a0", dst: "a1", fn: function(s, d){ return d + s + 1; } },
+  { src: "a1", dst: "a2", fn: function(s, d){ return d + s + 1; } },
+  { src: "b0", dst: "b1", fn: function(s, d){ return d + s + 1; } },
+  { src: "b1", dst: "b2", fn: function(s, d){ return d + s + 1; } }
+];
+var IF_FWD = { src: "a2", dst: "b0", fn: function(s, d){ return d + mod(s, 7); } };
+var IF_REV = { src: "b2", dst: "a0", fn: function(s, d){ return d + mod(s, 5); } };
+
+function ownM(sid){ return sid[0] === "a" ? U1.m : U2.m; }
+function renderS4(){
+  document.getElementById("s4s-v").textContent = s4.steps;
+  var links = INTRA.slice();
+  if (s4.ifaces >= 1) links.push(IF_FWD);
+  if (s4.ifaces >= 2) links.push(IF_REV);
+
+  var modOf = s4.mode === "collapse" ? function(){ return 7; } : ownM;
+  var base = {}; U1.members.concat(U2.members).forEach(function(k){ base[k] = mod(seeds.uni[k], ownM(k)); });
+
+  var violations = [], seen = {};
+  for (var k = 1; k <= s4.steps; k++){
+    var snap = run(base, links, modOf, k);
+    U1.members.concat(U2.members).forEach(function(sid){
+      if (snap[sid] >= ownM(sid)){
+        violations.push({ step: k, sid: sid, v: snap[sid] });
+        seen[sid] = true;
+      }
+    });
+  }
+  var final = run(base, links, modOf, s4.steps);
+
+  /* cross influence at this configuration */
+  function influence(){
+    var ref = run(base, links, modOf, s4.steps);
+    var p1 = Object.assign({}, base); p1.a0 = mod(base.a0 + 1, ownM("a0"));
+    var p2 = Object.assign({}, base); p2.b1 = mod(base.b1 + 1, ownM("b1"));
+    var o1 = run(p1, links, modOf, s4.steps), o2 = run(p2, links, modOf, s4.steps);
+    var f = U2.members.filter(function(s){ return o1[s] !== ref[s]; }).length;
+    var b = U1.members.filter(function(s){ return o2[s] !== ref[s]; }).length;
+    return { fwd: f, back: b };
+  }
+  var inf = influence();
+
+  var host = document.getElementById("s4-unis");
+  host.textContent = "";
+  [U1, U2].forEach(function(u){
+    var box = el("div", "uni");
+    box.appendChild(el("h3", null, u.uid));
+    box.appendChild(el("div", "bound",
+      s4.mode === "collapse" ? "bounded by range(7) — collapsed" : "bounded by range(" + u.m + ")"));
+    var cells = el("div", "cells");
+    u.members.forEach(function(sid){
+      var bad = final[sid] >= u.m;
+      cell(cells, sid, final[sid], bad ? "outside range(" + u.m + ")" : seedNote(sid), bad ? "bad" : null);
+    });
+    box.appendChild(cells);
+    host.appendChild(box);
+  });
+
+  var lines = [];
+  lines.push("seed        " + Object.keys(base).sort().map(function(k){ return k + "=" + base[k]; }).join("  "));
+  lines.push("after " + s4.steps + "     " + Object.keys(final).sort().map(function(k){
+    return (final[k] >= ownM(k) ? '<span class="v">' + k + "=" + final[k] + "</span>" : k + "=" + final[k]);
+  }).join("  "));
+  if (s4.ifaces === 0) lines.push('interfaces  <span class="dim">none — the two are sealed</span>');
+  if (s4.ifaces >= 1) lines.push('interface   a2 → b0   translate(s) = s mod 7   <span class="dim">U1 space into U2 space</span>');
+  if (s4.ifaces >= 2) lines.push('interface   b2 → a0   translate(s) = s mod 5   <span class="dim">U2 space into U1 space</span>');
+  if (violations.length)
+    lines.push('violations  <span class="v">' + violations.length + "</span> — e.g. step " + violations[0].step +
+               ", " + violations[0].sid + " = " + violations[0].v + " outside range(" + ownM(violations[0].sid) + ")");
+  else
+    lines.push('violations  <span class="s">0</span> <span class="dim">— every substrate stayed inside its own space</span>');
+  calc(document.getElementById("s4-calc"), lines);
+
+  tally(document.getElementById("s4-tally"), [
+    { label: "bound violations", value: violations.length, cls: violations.length ? "bad" : null },
+    { label: "universes left", value: s4.mode === "collapse" ? 1 : 2, cls: s4.mode === "collapse" ? "bad" : "hot" },
+    { label: "U1 → U2", value: inf.fwd, cls: inf.fwd ? "hot" : null },
+    { label: "U2 → U1", value: inf.back, cls: inf.back ? "hot" : null }
+  ]);
+
+  var v = document.getElementById("s4-verdict");
+  if (s4.mode === "collapse")
+    verdict(v, "bad", 'Collapsing is not a neutral relabelling. Re-bounding everything to one modulus pushes U1\'s substrates to <span class="num">' + violations.length + '</span> states that <b>do not exist in U1\'s state space</b>, and there is now one universe where there were two.');
+  else if (s4.ifaces === 0)
+    verdict(v, null, 'Both spaces stay closed — <span class="num">0</span> violations — but with no interface the two universes are causally sealed: influence measures <span class="num">0</span> in both directions. Closure without conjunction is just two separate systems.');
+  else if (s4.ifaces === 1)
+    verdict(v, "change", 'One directed boundary link carrying a translation is enough: U1 reaches U2 in <span class="num">' + inf.fwd + '</span> substrates while both spaces stay closed and both remain separately steppable. The reverse direction measures exactly <span class="num">' + inf.back + '</span> — the interface is <b>directed</b>, so this is the unit of asymmetric conjunction.');
+  else
+    verdict(v, "change", 'Two interfaces, influence both ways — <span class="num">' + inf.fwd + '</span> forward and <span class="num">' + inf.back + '</span> back — with <span class="num">0</span> bound violations and the partition intact. Mutual conjunction costs exactly one more directed link, not a shared state space.');
+}
+
+/* ============================================================
+   wiring
+   ============================================================ */
+function renderAll(){
+  s0.a = seeds.pairA; s0.b = seeds.pairB;
+  document.getElementById("s0a").value = s0.a;
+  document.getElementById("s0b").value = s0.b;
+  s1.a = seeds.couple.a; s1.b = seeds.couple.b; s1.applied = null; s1.merged = false;
+  document.getElementById("s1a").value = s1.a;
+  document.getElementById("s1b").value = s1.b;
+  s2.stored = null; s2.a = mod(seeds.ring.a + 7, M);
+  document.getElementById("s2a").value = s2.a;
+  renderS0(); renderS1(); renderS2(); renderS3(); renderS4();
+}
+function seg(id, attr, onPick){
+  var host = document.getElementById(id);
+  host.addEventListener("click", function(e){
+    var b = e.target.closest("button"); if (!b) return;
+    Array.prototype.forEach.call(host.querySelectorAll("button"), function(x){
+      x.setAttribute("aria-pressed", String(x === b));
+    });
+    onPick(b.getAttribute(attr));
+  });
+}
+function slide(id, onMove){
+  document.getElementById(id).addEventListener("input", function(e){ onMove(parseInt(e.target.value, 10)); });
+}
+
+slide("s0a", function(v){ s0.a = v; renderS0(); });
+slide("s0b", function(v){ s0.b = v; renderS0(); });
+document.getElementById("s0-match").addEventListener("click", function(){
+  s0.b = s0.a; document.getElementById("s0b").value = s0.b; renderS0();
+});
+
+slide("s1a", function(v){ s1.a = v; s1.applied = null; s1.merged = false; renderS1(); });
+slide("s1b", function(v){ s1.b = v; s1.applied = null; s1.merged = false; renderS1(); });
+document.getElementById("s1-couple").addEventListener("click", function(){
+  s1.applied = mod(s1.b + s1.a, M); s1.merged = false; renderS1();
+});
+document.getElementById("s1-merge").addEventListener("click", function(){ s1.merged = true; renderS1(); });
+document.getElementById("s1-reset").addEventListener("click", function(){
+  s1.a = seeds.couple.a; s1.b = seeds.couple.b; s1.applied = null; s1.merged = false;
+  document.getElementById("s1a").value = s1.a; document.getElementById("s1b").value = s1.b;
+  renderS1();
+});
+
+seg("s2-mode", "data-mode", function(m){ s2.mode = m; renderS2(); });
+slide("s2a", function(v){ s2.a = v; renderS2(); });
+document.getElementById("s2-sweep").addEventListener("click", function(){
+  var i = 0, input = document.getElementById("s2a");
+  var t = setInterval(function(){
+    s2.a = i % M; input.value = s2.a; renderS2();
+    if (++i > M) clearInterval(t);
+  }, 180);
+});
+
+seg("s3-mode", "data-mode", function(m){ s3.mode = m; renderS3(); });
+slide("s3a", function(v){ s3.a = v; renderS3(); });
+slide("s3s", function(v){ s3.steps = v; renderS3(); });
+
+seg("s4-mode", "data-mode", function(m){ s4.mode = m; renderS4(); });
+seg("s4-if", "data-if", function(n){ s4.ifaces = parseInt(n, 10); renderS4(); });
+slide("s4s", function(v){ s4.steps = v; renderS4(); });
+
+renderAll();
+liveSeed();
+})();
+</script>
