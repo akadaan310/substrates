@@ -417,11 +417,201 @@ measured and which I4 makes explicit.
 
 ---
 
+# F13 — MEASUREMENT RECORD: S4 minimality search
+
+Run with `PYTHONPATH=. python3 audit/s4_minimality.py`; figures pinned by
+`tests/test_s4_minimality.py`. This discharges audit item **E2** and settles
+**C16**.
+
+## Two targets, kept separate
+
+v0.1 entangles them. They are measured independently here and **they do not
+coincide.**
+
+- **T1 CONJUNCTION** — non-zero causal influence between two bounded state
+  spaces, with closure, partition and separability intact.
+- **T2 NONTRIVIAL TRANSLATION** — the interface map is not the identity on the
+  source's reachable set.
+- **T3 RELATIONAL CONJUNCTION** — cross-universe *relations* change, with no
+  state crossing the boundary at all. (Not in v0.1; it emerged from the search.)
+
+## Headline: "the smallest conjoining structure" is not well defined
+
+**The claim as v0.1 states it is disproved.** There is no single smallest
+conjoining structure, because the minimum depends entirely on which target
+behaviour is named, and v0.1 names none:
+
+| target | smallest structure found | cross-links needed |
+|---|---|---|
+| T1 state influence | one directed link carrying **≥ 1 bit** on the reachable set | **1** |
+| T2 nontrivial translation | not required for T1 at all — see below | — |
+| T3 relational influence | **no link whatsoever**; a gate whose witness set contains the perturbed substrate | **0** |
+
+T1 and T3 have different minima, and neither is "one directed link carrying a
+translation between the state spaces". The v0.1 claim is not merely unproven; it
+names the wrong component.
+
+## Coverage
+
+| search | space | coverage |
+|---|---|---|
+| B | every map `τ : Z₅ → Z₇` | **exhaustive**, 7⁵ = 16,807 |
+| C | every map `τ : Z₇ → Z₅` | **exhaustive**, 5⁷ = 78,125 |
+| A | interface counts 0–2 × both directions | **exhaustive** |
+| I | boundary pairs `(src, dst)` | **exhaustive**, 9 of 9 |
+| E | modulus pairs | 7 chosen pairs spanning expand/shrink/equal |
+| H | seeds | **sampled**, 1,000 |
+| combined forward × reverse map pairs | 7⁵ × 5⁷ ≈ 1.3 × 10⁹ | **not attempted**; directions measured independently |
+
+## The exact condition for T1
+
+Influence occurs **iff the map takes at least two values on the source's
+reachable set** — not iff it is non-identity, and not iff it is "a translation".
+
+| values `τ` takes on R | maps | maps producing influence |
+|---|---|---|
+| 1 | 49 | **0** |
+| 2 | 2,058 | **2,058** |
+| 3 | 8,820 | **8,820** |
+| 4 | 5,880 | **5,880** |
+
+Predicate `|τ(R)| ≥ 2` agrees with observed influence in **16,807/16,807
+(100.0%)** forward maps and **78,125/78,125 (100.0%)** reverse maps. Both
+exhaustive.
+
+`R`, the reachable set, is the right domain and not `Z₅`: a2 visits only
+`{0,2,3,4}`, 4 of 5 states, across the reference and perturbed runs. A map
+non-constant on `Z₅` but constant on `R` carries nothing.
+
+## Smallest witnesses
+
+| target | smallest witness | result |
+|---|---|---|
+| T1 | `τ = (0,0,0,0,1)` — two values on R, i.e. **one bit** | influence 9 cells, first at step 5 |
+| T1 with T2 false | `τ = (0,0,2,3,4)` — the **identity on R** | influence 13 cells |
+| T3 | mediated gate, **zero** cross-links | 2 non-incident cross-universe relations move |
+
+The second row is the decisive one: a map that is the identity on everything the
+source actually reaches still conjoins. **T2 is not necessary for T1.**
+
+## The trap: interface count is syntax, not information
+
+Exactly parallel to F9's arity trap.
+
+| structure | interfaces | values carried on R | influence |
+|---|---|---|---|
+| two interfaces, both constant | **2** | 1 / 1 | **0 and 0** |
+| one interface, one bit | **1** | 2 | **11** |
+| one interface, full inclusion | **1** | 4 | 13 |
+
+Two interfaces carrying zero bits conjoin nothing. Counting interfaces measures
+syntax. The unit is carried information on the reachable set.
+
+## Why v0.1's forward translation was vacuous
+
+Not a poor choice — **forced**. For `m_src ≤ m_dst` the canonical map `s mod
+m_dst` *is* the identity, necessarily, and no alternative canonical map exists.
+
+| m_src | m_dst | relation | canonical map | identity? |
+|---|---|---|---|---|
+| 5 | 7 | expanding | `[0,1,2,3,4]` | **yes** |
+| 7 | 5 | shrinking | `[0,1,2,3,4,0,1]` | no |
+| 5 | 5 | equal | `[0,1,2,3,4]` | **yes** |
+| 4 | 8 | expanding | `[0,1,2,3]` | **yes** |
+| 11 | 3 | shrinking | `[0,1,2,0,1,2,0,1,2,0,1]` | no |
+
+Every expanding or equal direction gives the identity. P1's finding generalises:
+a translation can only do work when it **shrinks**.
+
+## The measurement, tested against itself
+
+v0.1's `bound_violations` counts states *above* a bound and is therefore blind to
+contraction. The replacement reports reached-state count against the modulus in
+both directions, and is applied identically to collapse and conjunction.
+
+| regime | universe | reached/modulus | escape | contraction | v0.1 metric |
+|---|---|---|---|---|---|
+| conjoined | U1 | 5/5 | no | no | 0 |
+| conjoined | U2 | 7/7 | no | no | 0 |
+| collapse to max 7 | U1 | 6/5 | **yes** | no | 4 |
+| collapse to min 5 | U2 | 6/7 | no | **yes** | **0** |
+| collapse to lcm 35 | U1 | 19/5 | **yes** | no | 20 |
+
+The `collapse to min 5` row is the test of the test: real contraction, **0** from
+the old metric, detected by the new one. The new metric flags conjunction as
+neither escaping nor contracting — but it reaches that verdict by the same
+criterion it applies to every collapse, so the verdict is earned rather than
+assumed.
+
+One further result, found by a crash rather than by design: under **collapse to
+lcm 35** the source leaves the interface map's domain **9 times**, so the map is
+no longer total and must be extended. Collapse does not merely re-bound states —
+**it destroys the well-typedness of any interface defined over the original
+spaces.**
+
+## What a "universe" needs
+
+Closure, partition and separability hold across every internal structure tried,
+**including no internal couplings at all**:
+
+| internal structure | influence | closure | partition | separable |
+|---|---|---|---|---|
+| v0.1 chain, `d+s+1` | 13 | yes | yes | yes |
+| chain, `d+2s` | 8 | yes | yes | yes |
+| cycle | 14 | yes | yes | yes |
+| U1 chain / U2 star | 14 | yes | yes | yes |
+| **no internal couplings** | **0** | yes | yes | yes |
+
+A universe requires nothing beyond a **bound and a membership map**. Closure,
+partition and separability follow from those two alone. Influence requires
+internal dynamics only because with none, the boundary substrate never varies and
+so carries nothing.
+
+## Seed dependence
+
+| structure | seeds showing influence |
+|---|---|
+| no interface | **0 / 1000** |
+| one interface, constant map | **0 / 1000** |
+| one interface, inclusion map | **1000 / 1000** |
+
+Seed-independent over 1,000 seeds (the v0.1 seed plus 999 random).
+
+## Component verdicts
+
+| component | verdict | evidence |
+|---|---|---|
+| a cross-link exists | **NECESSARY** for T1 | 0 links → 0 influence; 1 link → 13 |
+| `τ` non-constant on the reachable set | **NECESSARY** for T1 | 0 of 49 constant maps produce influence |
+| `τ` is *not* the identity (T2) | **NEITHER** | identity-on-R gives influence 13 |
+| `τ` carries the full source state | **NEITHER** | 1 bit gives 11 vs full 13 |
+| a second, reverse link | **NEITHER** for T1, **NECESSARY** for mutual | one link → reverse influence 0; two → 11 |
+| the specific boundary pair `a2→b0` | **NEITHER** | 9 of 9 `(src,dst)` pairs produce influence |
+| a cross-link at all, for **T3** | **NEITHER** | mediated gate moves 2 cross-universe relations with 0 links |
+
+**Sufficient set for T1:** one directed cross-link whose map takes ≥ 2 values on
+the source's reachable set. **Minimal:** removing the link, or reducing the map
+to one value, destroys the behaviour; no smaller component set was found.
+
+## Assumptions under which the T1 minimality holds
+
+| # | Assumption | If violated |
+|---|---|---|
+| J1 | The target is **state** influence between universes | T3 needs no link at all |
+| J2 | Influence is measured over a fixed horizon (T = 8 steps) | A shorter horizon can miss a slow channel — the 1-bit witness first shows at step 5 |
+| J3 | The source substrate varies, i.e. the universe has internal dynamics | With none, the link carries nothing regardless of `τ` |
+| J4 | Information is judged on the **reachable** set, not the full state space | Judging on `Z₅` misclassifies maps constant on R |
+| J5 | Both universes' bounds are fixed across the measurement | Collapse breaks the map's domain (9 escapes at lcm 35) |
+| J6 | Cross-links are the only channel considered | A shared gate is a second channel — this is J1 restated structurally |
+
+
+---
+
 # A. INSTRUMENT AUDIT
 
 | # | Finding | Severity |
 |---|---|---|
-| A1 | **Minimality is the instrument's organising claim and no bench tested it.** Asserted at S0, S1, S3, S4 with no search performed. **Partially discharged:** F9 searched S3's case exhaustively and replaced the assertion with a measured minimum (arity 3) and a sharper condition (witness membership). S0, S1 and S4 remain unsearched. | **Critical → High** |
+| A1 | **Minimality is the instrument's organising claim and no bench tested it.** Asserted at S0, S1, S3, S4 with no search performed. **Discharged for S3** (F9: minimum arity 3, condition is witness membership) **and S4** (F13: no unique minimum exists; C16 disproved). Both searches found the stated component was the wrong one. **S0 and S1 remain unsearched**, and on the record so far the prior should be that their minimality claims are also wrong. | **Critical → High** |
 | A2 | **Two of five benches rest on tautologies.** S2's stored-topology control reads a constant function; S4's conjoined closure re-checks an invariant `step()` enforces. Both are reported in the same register as results that could have failed. | **High** |
 | A3 | **S2's non-incidence is a theorem presented as a measurement.** P3: 0 failures in 248,832 exhaustive cases. A 12-point sample of a provable statement adds nothing and implies contingency where there is none. | **High** |
 | A4 | **Seed drift between notebook and artifact.** `FINDINGS.md` fixes seeds `{a:0,b:2,c:5,d:9}`; the published bench seeds from live commits. The artifact therefore cannot reproduce 17, 8, or 3, and says nothing about this. Two authorities disagree and neither declares precedence. | **High** |
@@ -452,9 +642,12 @@ measured and which I4 makes explicit.
 | C11 | Propagation reaches non-incident relations but decays by step 3 | Survives; **decay is an artifact** | Z₁₂ wraparound with `d+s` |
 | C12 | Conjoining keeps each universe inside its own space | Survives, **tautologically** | `step()` applies the modulus |
 | C13 | Collapsing breaks the smaller state space | **Falsified as general** | P5: 0 at mod 5, 3 at mod 7, 31 at lcm |
-| C14 | The interface carries a translation between state spaces | **Materially weakened** | P1: forward map is the identity on range(5) |
+| C14 | The interface carries a translation between state spaces | **Falsified as the operative component** | P1; F13 shows expanding directions force the identity, and 1 bit suffices |
 | C15 | No interface ⇒ no influence; one ⇒ one-way | **Survives** (structural) | no cross edge in the coupling graph |
-| C16 | One directed translating link is the smallest conjoining structure | **Untested** | no minimality search; and see C14 |
+| C16 | One directed translating link is the smallest conjoining structure | **Disproved as stated** | F13: no unique minimum exists — T1 needs 1 link, T3 needs 0; and the operative component is carried information, not translation |
+| C19 | T1 occurs iff the interface map takes ≥2 values on the source's reachable set | **Measured** | F13: 16,807/16,807 and 78,125/78,125 exhaustive, 100% agreement |
+| C20 | A nontrivial translation (T2) is not necessary for conjunction (T1) | **Measured** | F13: identity-on-R map gives influence 13 |
+| C21 | A universe requires nothing beyond a bound and a membership map | **Measured** | F13: closure, partition, separability hold with no internal couplings |
 
 Survives as stated: **C3, C7, C15**. Survives vacuously: **C2, C6, C12**.
 Falsified or materially weakened: **C1, C9, C13, C14**. Artifacts: **C4, C8, C10**.
@@ -477,7 +670,9 @@ Untested: **C5, C16**.
 | X9 | A linear sum is a neutral choice of medium | S3 | C9, C10 | No — gives every substrate equal leverage |
 | X10 | The chain `a→b→c→d` is a neutral coupling graph | S3 | C11 | No — never varied |
 | X11 | Collapse means re-bounding to the maximum modulus | S4 | C13 | **Falsified as neutral** by P5 |
-| X12 | Exceeding a bound is the only way to break a space | S4 | C13 | No — the test is one-sided; shrinkage is invisible |
+| X12 | Exceeding a bound is the only way to break a space | S4 | C13 | **Falsified** by F13 — replacement metric detects contraction the old one scored 0 |
+| X19 | Interface count measures conjoining capacity | S4 | C16 | **Falsified** by F13 — 2 constant interfaces give 0, 1 one-bit interface conjoins |
+| X20 | "Smallest conjoining structure" is well defined without naming a target | S4 | C16 | **Falsified** by F13 — T1 and T3 have different minima |
 | X13 | The two universes are independent systems | S4 | C13, C15 | No — identical structure, differing only in modulus |
 | X14 | Differing-substrate count measures influence | S4 | C15 | No — saturates at 3 |
 | X15 | 6 steps is a sufficient horizon | S4 | C13, C15 | No — unjustified |
@@ -499,7 +694,8 @@ would cost to make standing parts of the notebook.
 | F7 | Threshold sweep of the mediated non-incident count | C10 | **Ran — C10 is an artifact** (P2) |
 | F8 | Identity-vs-`s%7` substitution on the forward interface | C14 | **Ran — C14 weakened** (P1) |
 | F9 | Minimum gate arity at which non-incident change appears (sweep 2→N) | C9, C16 | **Ran — minimum arity 3; arity 2 impossible under I1–I6; condition is witness membership, not size.** C16 still untested |
-| F10 | Per-universe *reachable state count* against its modulus, under each collapse | X12 | Not run — would fix the one-sided violation test |
+| F10 | Per-universe *reachable state count* against its modulus, under each collapse | X12 | **Ran inside F13** — metric is two-sided; collapse-to-min contraction scored 0 by the old metric |
+| F13 | S4 minimality search: interfaces 0–2, all maps both directions, moduli, collapse regimes | C16, C14, X12 | **Ran — C16 disproved as stated.** No unique minimum; T1 needs one link carrying ≥1 bit, T3 needs none |
 | F11 | Vary the coupling graph (chain, star, cycle, disconnected) and re-measure propagation | C11, X10 | Not run |
 | F12 | Replay the notebook's fixed seeds through the artifact and diff every figure | A4, X16 | Not run — required before the artifact can cite `FINDINGS.md` |
 
@@ -513,11 +709,11 @@ is a measurement the instrument currently asserts without.
    operative condition is witness membership, not witness size. A1 is discharged
    for S3 only. **S4's minimality (C16) is now the outstanding instance** and is
    promoted to item 2.
-2. **Minimality search over conjoining structures (C16, A1).** The same
-   treatment for S4: enumerate candidate structures relating two bounded state
-   spaces and establish the smallest that yields non-zero cross-influence with
-   closure preserved. Until this runs, S4 repeats the error F9 just corrected in
-   S3 — asserting a minimum without searching.
+2. ~~**Minimality search over conjoining structures (C16, A1).**~~ **Done** — see
+   the F13 measurement record above. C16 is disproved as stated: the minimum
+   depends on the target behaviour, and v0.1 names none. A1 is now discharged for
+   S3 and S4; **S0 and S1 remain unsearched** and are the last outstanding
+   instances.
 3. **Seed-distribution reporting (F6, generalised).** Replace every scalar
    headline with a distribution over seeds, and state which figures are
    invariant, which are typical, and which are artifacts. Discharges A5, A6, A7
