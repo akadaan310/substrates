@@ -262,11 +262,166 @@ isolates how much of the S4 claim the translation is actually carrying.
 
 ---
 
+# F9 — MEASUREMENT RECORD: gate-arity sweep, 2 → N
+
+Run with `PYTHONPATH=. python3 audit/arity_sweep.py`; figures pinned by
+`tests/test_arity.py`. This discharges audit item **E1** and replaces claim
+**C9**, which v0.1 asserted and P4 falsified.
+
+## Model measured
+
+Each unordered pair `{x,y}` is assigned a **witness set** `W(x,y) ⊇ {x,y}` and
+adjacency is `g(states of W(x,y))`. The gate's **arity** is `|W(x,y)|`.
+Arity 2 means `W(x,y) = {x,y}` exactly — the v0.1 pairwise gate. A relation is
+**non-incident** to `a` when `a ∉ {x,y}`.
+
+## Result
+
+**Minimum arity at which a non-incident change is possible: 3.**
+**Arity 3 is not sufficient.** The operative condition is not the size of the
+witness set but its membership:
+
+> A relation `{x,y}` can change under a perturbation of `a`
+> **if and only if `a ∈ W(x,y)`.**
+
+For a non-incident relation this forces `|W| ≥ 3` *and* `a ∈ W`. Arity is a
+consequence of the condition, not the condition.
+
+## Arity 2 — impossibility
+
+| M | gate space | coverage | checks | non-incident flips | gate input unchanged |
+|---|---|---|---|---|---|
+| 2 | 2⁴ = 16 | **exhaustive** | 768 | **0** | 768/768 |
+| 3 | 2⁹ = 512 | **exhaustive** | 248,832 | **0** | 248,832/248,832 |
+| 4 | 2¹⁶ | sampled 20,000 | 1,800,090 | 0 | — |
+| 5 | 2²⁵ | sampled 20,000 | 1,918,785 | 0 | — |
+| 12 | 2¹⁴⁴ | sampled 20,000 | 2,200,116 | 0 | — |
+
+At M=2 and M=3 the search covers the **complete space of boolean arity-2
+gates** — all 528 of them, symmetric and asymmetric alike — against every
+configuration of four substrates, every perturbation, and every non-incident
+pair. 249,600 exhaustive checks, zero flips.
+
+The mechanism matters more than the count. In **249,600 of 249,600** exhaustive
+cases the gate's *input tuple was identical* before and after. This is not a
+case of differing inputs colliding on the same output — **the inputs never
+differ**. That is why the search cannot be defeated by a cleverer gate, and why
+it generalises past the moduli searched:
+
+> For arity 2, `W(x,y) = {x,y}`. A perturbation changes only `s_a`. If
+> `a ∉ {x,y}` then `(s_x, s_y)` is unchanged, so `g(s_x, s_y)` is unchanged, for
+> every `g`. Holds for every M, every N, every gate, symmetric or not.
+
+The exhaustive search verifies a theorem rather than sampling a contingency.
+
+## Assumptions under which the impossibility holds
+
+Each is load-bearing. Violating any one restores non-incident change at arity 2,
+so the impossibility is exactly as strong as this list and no stronger.
+
+| # | Assumption | If violated |
+|---|---|---|
+| I1 | The gate is a total, deterministic function of its witness set's states | A stochastic gate changes relations, but not *because of* `a` |
+| I2 | Memoryless — no dependence on any earlier configuration | Restores change: history smuggles in other substrates' past states |
+| I3 | `W(x,y) = {x,y}` exactly, and `W` is fixed, not itself state-dependent | A state-dependent `W` is a higher-arity function in disguise |
+| I4 | The perturbation changes `s_a` only; no dynamics run between observations | **This is v0.1's EXP3B.** Let couplings run and arity 2 reaches non-incident relations from step 1 |
+| I5 | Labels and the substrate set are fixed across the perturbation | Relabelling changes which pair is which |
+| I6 | Arguments are **raw states**, not configuration-derived quantities | **Measured below** — a 2-argument gate over derived values gives 72 flips |
+
+I4 is the important one: it is precisely the escape v0.1 already found and
+reported as "pairwise + time". The impossibility is a statement about a
+**single synchronous re-derivation**, not about pairwise gates in general.
+
+## Apparent arity vs effective arity (I6)
+
+| gate | signature | information set | flips |
+|---|---|---|---|
+| `(s_x + s_y) mod 2` | 2 arguments | `{x, y}` | **0** |
+| `rank(x) == rank(y)`, rank taken against the configuration mean | 2 arguments | **all substrates** | **72** |
+
+Both take two arguments. Only the first is arity 2 under this model. The
+impossibility constrains the **information set**, not the number of formal
+parameters — a gate whose arguments are configuration-derived is arity N wearing
+an arity-2 signature. Any future gate must be classified by what it reads, not
+by its signature.
+
+## Arity 3 — possibility, and the witness condition
+
+| arity | witness set | `a ∈ W`? | gates admitting a flip / total | max flips per gate |
+|---|---|---|---|---|
+| 2 | `(c, d)` | no | **0 / 16** | 0 |
+| 3 | `(c, d, a)` | **yes** | **240 / 256** | 16 |
+| 3 | `(c, d, b)` | no | **0 / 256** | 0 |
+| 4 | `(c, d, a, b)` | **yes** | **65280 / 65536** | — |
+
+`(c,d,b)` has the same arity as `(c,d,a)` and moves nothing, because `b`'s state
+does not change when `a` is perturbed. The predicate `a ∈ W(x,y)` agrees with
+observation in **4/4** witness sets.
+
+The failure counts are an exact identity, not a residue. Gates that fail are
+**precisely** the gates that ignore `a`'s argument, of which there are
+`2^(M^(k-1))`:
+
+| arity | total gates | admitted | failures | gates ignoring `a` | match |
+|---|---|---|---|---|---|
+| 3 | 256 | 240 | 16 | 2^(2²) = 16 | exact |
+| 4 | 65,536 | 65,280 | 256 | 2^(2³) = 256 | exact |
+
+A gate admits a non-incident flip **iff it actually depends on `a`'s state**.
+
+## Capacity
+
+| arity | witness rule | max simultaneous non-incident changes |
+|---|---|---|
+| 2 | `W(x,y) = (x,y)` | **0 of 3** |
+| 3 | `W(x,y) = (x,y,a)` | **3 of 3** |
+| 3 | `W(x,y) = (x,y,b)` | **0 of 3** |
+| 4 | `W(x,y) = (x,y,a,b)` | **3 of 3** |
+
+One witness is enough to move every non-incident relation at once. Arity 4 buys
+no additional capacity over arity 3.
+
+## Dependence on topology, gate function, and seed
+
+**Topology (N).** Possibility is topology-independent; only the count scales.
+
+| N | non-incident relations | arity-2 flips | arity-3 (witness `a`) flips |
+|---|---|---|---|
+| 3 | 1 | **0** | 1,024 |
+| 4 | 3 | **0** | 6,144 |
+| 5 | 6 | **0** | 24,576 |
+
+Flip counts scale with `C(N-1, 2)` — 1 : 3 : 6 — so the number is an artifact of
+system size, while the zero is not.
+
+**Gate function.** Not a knife-edge: **240/256 (93.8%)** of all arity-3 gates at
+M=2 admit a flip, and **4000/4000** sampled at M=3. The property is generic
+among gates that read `a`, not a special construction.
+
+**Seed.** For a fixed gate (parity of `c,d,a`), **16/16** configuration-and-
+perturbation cases flip — seed-independent for that gate. The best gates reach
+the maximum 16 of 16, so seed-dependence is a property of the gate chosen, not
+of the phenomenon.
+
+## What this settles, and what it does not
+
+Settled: the minimum arity is 3; arity 2 is impossible under I1–I6; the real
+condition is witness membership; the result is generic over gates, independent
+of seeds and of topology except in count.
+
+Not settled: this is S3's minimality only. **S4's minimality claim (C16) remains
+untested** — no search has been done over conjoining structures. And the
+impossibility says nothing about arity 2 *with dynamics*, which v0.1 already
+measured and which I4 makes explicit.
+
+
+---
+
 # A. INSTRUMENT AUDIT
 
 | # | Finding | Severity |
 |---|---|---|
-| A1 | **Minimality is the instrument's organising claim and no bench tests it.** "Smallest primitive", "smallest operation", "smallest addition", "smallest structure" appear at S0, S1, S3, S4. Each is an assertion about a search space; no search is performed. P4 finds a smaller structure than S3 claims is smallest. | **Critical** |
+| A1 | **Minimality is the instrument's organising claim and no bench tested it.** Asserted at S0, S1, S3, S4 with no search performed. **Partially discharged:** F9 searched S3's case exhaustively and replaced the assertion with a measured minimum (arity 3) and a sharper condition (witness membership). S0, S1 and S4 remain unsearched. | **Critical → High** |
 | A2 | **Two of five benches rest on tautologies.** S2's stored-topology control reads a constant function; S4's conjoined closure re-checks an invariant `step()` enforces. Both are reported in the same register as results that could have failed. | **High** |
 | A3 | **S2's non-incidence is a theorem presented as a measurement.** P3: 0 failures in 248,832 exhaustive cases. A 12-point sample of a provable statement adds nothing and implies contingency where there is none. | **High** |
 | A4 | **Seed drift between notebook and artifact.** `FINDINGS.md` fixes seeds `{a:0,b:2,c:5,d:9}`; the published bench seeds from live commits. The artifact therefore cannot reproduce 17, 8, or 3, and says nothing about this. Two authorities disagree and neither declares precedence. | **High** |
@@ -290,7 +445,9 @@ isolates how much of the S4 claim the translation is actually carrying.
 | C6 | Stored edges never respond to state | Survives, **tautologically** | `edge_set` ignores its argument |
 | C7 | A pairwise gate changes only incident relations | **Survives, promoted to theorem** | P3: 0/248,832 |
 | C8 | 17 changed relations | **Weakened to typical** | P6: 15–21, mean 17.5, 43.1% exactly 17 |
-| C9 | A configuration-wide term is the smallest addition reaching non-incident relations | **Falsified** | P4: arity-3 witness gate yields 6 |
+| C9 | A configuration-wide term is the smallest addition reaching non-incident relations | **Falsified, now replaced** | P4; superseded by C17/C18 (F9) |
+| C17 | Minimum arity for non-incident change is 3, and a relation moves iff `a` is in its witness set | **Measured** | F9: 4/4 witness sets; failures = gates ignoring `a`, exactly |
+| C18 | No arity-2 gate can move a non-incident relation under I1–I6 | **Measured + proved** | F9: 249,600 exhaustive checks, 0 flips, inputs identical in 100% |
 | C10 | 8 non-incident changes under mediation | **Artifact** | P2: 0/0/8/4/0/0 across thresholds |
 | C11 | Propagation reaches non-incident relations but decays by step 3 | Survives; **decay is an artifact** | Z₁₂ wraparound with `d+s` |
 | C12 | Conjoining keeps each universe inside its own space | Survives, **tautologically** | `step()` applies the modulus |
@@ -314,7 +471,9 @@ Untested: **C5, C16**.
 | X5 | The gate is symmetric, memoryless, arity 2 | S2 | C7 | Arity is the load-bearing part (P3) |
 | X6 | Symmetric difference is the right change metric | S2, S3 | C8, C10 | No — appearance and disappearance are conflated |
 | X7 | One base configuration is representative | S2, S3, S4 | C8, C10, C13 | **Falsified** by P6 |
-| X8 | The mediating term must read the whole configuration | S3 | C9 | **Falsified** by P4 |
+| X8 | The mediating term must read the whole configuration | S3 | C9 | **Falsified** by P4; replaced by F9's witness condition |
+| X17 | Arity can be read off a gate's signature | F9 | C18 | **Falsified** — derived arguments give 72 flips at 2 parameters (I6) |
+| X18 | The arity-2 impossibility holds without qualification | F9 | C18 | **Bounded** — holds only under I1–I6; I4 (no dynamics) is the live escape |
 | X9 | A linear sum is a neutral choice of medium | S3 | C9, C10 | No — gives every substrate equal leverage |
 | X10 | The chain `a→b→c→d` is a neutral coupling graph | S3 | C11 | No — never varied |
 | X11 | Collapse means re-bounding to the maximum modulus | S4 | C13 | **Falsified as neutral** by P5 |
@@ -339,7 +498,7 @@ would cost to make standing parts of the notebook.
 | F6 | Distribution of the EXP2 sweep total over random seeds | C8, X7 | **Ran — C8 weakened** (P6) |
 | F7 | Threshold sweep of the mediated non-incident count | C10 | **Ran — C10 is an artifact** (P2) |
 | F8 | Identity-vs-`s%7` substitution on the forward interface | C14 | **Ran — C14 weakened** (P1) |
-| F9 | Minimum gate arity at which non-incident change appears (sweep 2→N) | C9, C16 | Not run — would convert an assertion into a result |
+| F9 | Minimum gate arity at which non-incident change appears (sweep 2→N) | C9, C16 | **Ran — minimum arity 3; arity 2 impossible under I1–I6; condition is witness membership, not size.** C16 still untested |
 | F10 | Per-universe *reachable state count* against its modulus, under each collapse | X12 | Not run — would fix the one-sided violation test |
 | F11 | Vary the coupling graph (chain, star, cycle, disconnected) and re-measure propagation | C11, X10 | Not run |
 | F12 | Replay the notebook's fixed seeds through the artifact and diff every figure | A4, X16 | Not run — required before the artifact can cite `FINDINGS.md` |
@@ -349,33 +508,38 @@ would cost to make standing parts of the notebook.
 Ordered by how much of the audit each one discharges. None are redesigns; each
 is a measurement the instrument currently asserts without.
 
-1. **Minimality sweep (F9).** Gate arity 2→N, reporting the smallest arity at
-   which non-incident change appears, and the smallest witness set at that arity.
-   Discharges A1 for S3 and converts C9 from a falsified claim into a measured
-   one. This is the single highest-value experiment: minimality is the
-   instrument's organising claim and is currently untested everywhere.
-2. **Seed-distribution reporting (F6, generalised).** Replace every scalar
+1. ~~**Minimality sweep (F9).**~~ **Done** — see the F9 measurement record above.
+   Minimum arity 3; arity 2 impossible under six stated assumptions; the
+   operative condition is witness membership, not witness size. A1 is discharged
+   for S3 only. **S4's minimality (C16) is now the outstanding instance** and is
+   promoted to item 2.
+2. **Minimality search over conjoining structures (C16, A1).** The same
+   treatment for S4: enumerate candidate structures relating two bounded state
+   spaces and establish the smallest that yields non-zero cross-influence with
+   closure preserved. Until this runs, S4 repeats the error F9 just corrected in
+   S3 — asserting a minimum without searching.
+3. **Seed-distribution reporting (F6, generalised).** Replace every scalar
    headline with a distribution over seeds, and state which figures are
    invariant, which are typical, and which are artifacts. Discharges A5, A6, A7
    and X7 across all benches.
-3. **Reconcile notebook and artifact (F12).** Either pin the artifact to the
+4. **Reconcile notebook and artifact (F12).** Either pin the artifact to the
    notebook's seeds and treat live commits as an additional condition, or state
    on the page that live seeding makes `FINDINGS.md`'s figures
    non-reproducible there. Discharges A4 and X16. Required before the bench can
    honestly point at the repo.
-4. **Two-sided space test (F10).** Measure reachable states per universe against
+5. **Two-sided space test (F10).** Measure reachable states per universe against
    its modulus, under collapse to min, max and lcm. Discharges X12 and replaces
    C13 with a claim that survives P5.
-5. **Coupling-graph variation (F11).** Chain, star, cycle, disconnected.
+6. **Coupling-graph variation (F11).** Chain, star, cycle, disconnected.
    Discharges X10 and establishes whether C11's step-1 reach is structural or an
    artifact of the chain.
-6. **Genuinely distinct universes (X13).** Give U1 and U2 different internal
+7. **Genuinely distinct universes (X13).** Give U1 and U2 different internal
    coupling structures and different transducers, not only different moduli, and
    re-run the conjunction measurements. Until this is done, S4 measures one
    system at two sizes.
-7. **Replace the saturating influence metric (X14).** Count differing steps, or
+8. **Replace the saturating influence metric (X14).** Count differing steps, or
    time-to-first-difference, instead of differing substrates. The current metric
    cannot distinguish strong from weak coupling.
 
 Not yet in scope, and deliberately so: any change to the published bench. v0.1
-stands as audited until items 1–3 are measured.
+stands as audited until items 2–4 are measured.
